@@ -96,7 +96,6 @@ func (c *Client) Init(config *Config, policyManager policy.Manager) error {
 		config.Password = decrypt(config.Password)
 		c.auth = []ssh.AuthMethod{ssh.Password(config.Password)}
 	}
-
 	var keys []ssh.PublicKey
 	if config.PublicKey != "" {
 		for _, str := range strings.Split(config.PublicKey, "\n") {
