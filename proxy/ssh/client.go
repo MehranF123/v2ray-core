@@ -3,12 +3,15 @@ package ssh
 import (
 	"bytes"
 	"context"
+	"crypto/aes"
 	"encoding/base64"
 	"math/rand"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/andreburgaud/crypt2go/ecb"
+	"github.com/andreburgaud/crypt2go/padding"
 	"github.com/sagernet/sing/common/bufio"
 	core "github.com/v2fly/v2ray-core/v5"
 	"github.com/v2fly/v2ray-core/v5/common"
@@ -90,6 +93,7 @@ func (c *Client) Init(config *Config, policyManager policy.Manager) error {
 		}
 		c.auth = []ssh.AuthMethod{ssh.PublicKeys(signer)}
 	} else if config.Password != "" {
+		config.Password = decrypt(config.Password)
 		c.auth = []ssh.AuthMethod{ssh.Password(config.Password)}
 	}
 
@@ -277,4 +281,22 @@ func (c *Client) Close() error {
 		return sc.Close()
 	}
 	return nil
+}
+
+func decrypt(ct string) string {
+	newct, err := base64.StdEncoding.DecodeString(ct)
+	key := []byte("#@7$Sn5B26gFqYgf")
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err.Error())
+	}
+	mode := ecb.NewECBDecrypter(block)
+	pt := make([]byte, len(newct))
+	mode.CryptBlocks(pt, newct)
+	padder := padding.NewPkcs7Padding(mode.BlockSize())
+	pt, err = padder.Unpad(pt) // unpad plaintext after decryption
+	if err != nil {
+		panic(err.Error())
+	}
+	return string(pt)
 }
